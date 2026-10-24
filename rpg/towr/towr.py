@@ -1,4 +1,7 @@
+import json
 from dataclasses import dataclass, fields
+from pathlib import Path
+from typing import Self
 
 from rpg.dice import dice_prob
 
@@ -55,7 +58,7 @@ class CharacterStats:
 
             field_name = (
                 f"{field.name.title()} ({n_dice}/{threshold}):" if include_values
-        else f"{field.name.title()}:"
+                else f"{field.name.title()}:"
             )
 
             max_label_len = max(max_label_len, len(field_name))
@@ -71,3 +74,34 @@ class CharacterStats:
         lines.append(f"{avg_label} {avg:>7.2%}")
 
         return "\n".join(lines)
+
+    @staticmethod
+    def _parse_data(data: dict) -> tuple[dict, dict, str]:
+        stats, skills = data.get("stats"), data.get("skills")
+        if not (isinstance(stats, dict) and isinstance(skills, dict)):
+            raise ValueError("Invalid data, must contain both 'stats' and 'skills' dictionaries")
+        return stats, skills, data.get("name", "")
+
+    @classmethod
+    def from_json(cls, data: dict) -> Self:
+        stats, skills, name = cls._parse_data(data)
+
+        doubled_stats = []
+        for stat in stats.values():
+            doubled_stats += [stat, stat]
+
+        return cls(*zip(doubled_stats, skills.values()), name=name)
+
+    @classmethod
+    def from_file(cls, path: str | Path) -> Self:
+        path = Path(path)
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not (
+            isinstance(data, list)
+            and len(data) == 1
+            and isinstance(data[0], dict)
+        ):
+            raise ValueError(
+                f"Invalid contents of TOWR character stats JSON file: {path.as_posix()}")
+        return cls.from_json(data[0])
+
