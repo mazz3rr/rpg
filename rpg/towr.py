@@ -1,3 +1,4 @@
+import itertools
 import json
 from dataclasses import dataclass, fields
 from pathlib import Path
@@ -34,6 +35,14 @@ class CharacterStats:
     charm: tuple[int, int]
 
     name: str = ""
+
+    def __post_init__(self) -> None:
+        skills = [getattr(self, f.name) for f in fields(self) if f.name != "name"]
+        for first_skill, second_skill in itertools.batched(skills, 2):
+            if first_skill[0] != second_skill[0]:
+                raise ValueError(
+                    "Invalid skills definition. All consecutive pairs must have the same N-dice "
+                    "value")
 
     def report(self, successes=1, include_values=True) -> str:
         lines = [f"Character: {self.name}"] if self.name else []
